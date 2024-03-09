@@ -1,93 +1,64 @@
-# Mini Project6
+# miniproj6: Rust Lambda Function with Logging and Tracing
 
+Instrument a Rust Lambda Function with Logging and Tracing. This project is based on [my mini-project5](https://gitlab.com/zx122/mini-project5) and use the same lambda function: return the number of students in a class given the an ap class name.
 
+## Procedure
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
+### First Step: Instrument a Rust Lambda Function:
+#### Option1: following the same procedures as in mini project5 to build the lambda function, and connect it to DynamoDB: 
+1. install Rust and Cargo Lambda, then in the desired folder, do `cargo lambda new <YOUR-PROJECT-NAME>`
+2. inside the `<YOUR-PROJECT-NAME>/src` folder, update the code in files `main.rs` to achieve the functionality of returning the number of students in each ap class.
+2. inside the directory just created update the dependencies in `Cargo.toml` to have:
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/zx122/mini-project6.git
-git branch -M main
-git push -uf origin main
+[dependencies]
+aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
+aws-sdk-dynamodb = "1.16.1"
+lambda_http = "0.10.0"
+tokio = { version = "1", features = ["full"] }
 ```
+3. Go to AWS Console and navigate to `IAM`. Create a new user and grant access (the same precesure as in the previous mini-projects):
+![](user.png) 
 
-## Integrate with your tools
+4. Under Security Sredentials section, generate an access key for API access. Then, set up environment variables so that cargo lambda knows which AWS account and region to deploy to by typing these two lines in the terminal inside the rust project directory:
+```
+export AWS_ACCESS_KEY_ID="your_access_key_here"
+export AWS_SECRET_ACCESS_KEY="your_secret_key_here"
+```
+5. Go back to AWS Console and navigate to `DynamoDB`. Create a table using the correct table name as written in the `main.rs` file and put the the name of primary key of the table in the `Partition key` box. We could manually add items to the table. TODO: there should be a faster way of doing it though.
+![](table.png) 
 
-- [ ] [Set up project integrations](https://gitlab.com/zx122/mini-project6/-/settings/integrations)
+6. Build the project by running `cargo lambda build --release`
+7. Deploy the project by running `cargo lambda deploy`
 
-## Collaborate with your team
+8. Go to AWS Console and navigate to `Lambda`, inside `Function`: If cargo lambda deploy success, you may see the deployed lambda function on AWS, the lambda function should be ready and shown under the list, click on the function name (in my case: `serverless_rust_microservice`), under `Configuration`, click `Permission`, then click the `link` under your Role name
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+9. attach policies `AWSDynamoDBFullAccess` and `AWSLambdaBasicExecutionRole` to your role.
 
-## Test and Deploy
+10. link  Lambda function with AWS API Gateway: click on `Add Trigger`, under the "choose a source", choose `API Gateway`, then choose `create a new API`, then choose `REST API`, click Add.
 
-Use the built-in continuous integration in GitLab.
+11. click on the link next to `API Gateway`, inside the Trigger tab, then create a new resource for your API's endpoint. For the created resource, implement an ANY method and associate it with your Lambda function. Click deploy, find stages and find your invoke URL.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+![](lambda.png) 
 
-***
+12. click on the link after `API endpoint`: it will take you to a new page that looks like this:
+![](initial_page.png) 
 
-# Editing this README
+13. attach `?ap_class=american-history` at the end of that url, the it will returns the number of students in ap american-history class. 
+![](api_endpoint.png) 
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+#### Option2: directly copy the rust directory into the new folder
+1. then remember to attach the aws keys: in the new_directory/project_name, type these into the terminal
+```
+export AWS_ACCESS_KEY_ID="your_access_key_here"
+export AWS_SECRET_ACCESS_KEY="your_secret_key_here"
+```
+2. same as before: do `cargo lambda build --release` and `cargo lambda deploy`, we don't need all the other stes above since we are using the same exact `serverless_rust_microservice` lambda function as before. All the polies and attachment should be set up already if mini project5 has been implemented.
 
-## Suggestions for a good README
+### Second Step: Logging and Tracing
+1. In AWS Lambda settings, navigate to Configuration > Monitoring and operations tools > Additional monitoring tools
+2. enable `X-ray active tracing` and `CloudWatch Lambda Insights`
+![](lambda_new.png) 
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+3. You will then be able to see function invocation statistics in your Cloudwatch dashboard: Navigate to Cloudwatch, then click log groups and choose the lambda function to see the stats:
+![](cloudwatch_1.png) 
+![](cloudwatch_2.png) 
